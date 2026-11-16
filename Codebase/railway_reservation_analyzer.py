@@ -1,33 +1,70 @@
-
+ 
 import pandas as pd
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 
-# 1. Load CSV File
+# --------------------------------
+# 1. Read CSV File
+# --------------------------------
+
 def load_data(filename):
 
+    file_path = Path(filename)
+
+    # Also check the Testcases folder
+    if not file_path.exists():
+        file_path = Path("Testcases") / filename
+
+    # Check the folder containing this Python file
+    if not file_path.exists():
+        file_path = Path(__file__).resolve().parent / filename
+
+    if not file_path.exists():
+        file_path = (
+            Path(__file__).resolve().parent.parent
+            / "Testcases" / filename
+        )
+
     try:
-        df = pd.read_csv(filename)
+        df = pd.read_csv(file_path, dtype=str)
 
-        required = ["PNR", "Train", "Class", "Fare", "Status"]
+        required_columns = [
+            "PNR", "Train", "Class", "Fare", "Status"
+        ]
 
-        for col in required:
-            if col not in df.columns:
-                print("Error: Missing column:", col)
+        for column in required_columns:
+            if column not in df.columns:
+                print(f"Error: Missing column '{column}'.")
                 return None
 
-        df["Fare"] = pd.to_numeric(df["Fare"], errors="coerce")
+        # Remove extra spaces
+        df["PNR"] = df["PNR"].str.strip()
+        df["Train"] = df["Train"].str.strip()
+        df["Status"] = df["Status"].str.strip().str.title()
 
-        invalid = df[df["Fare"].isna()]
+        # Convert Fare into numeric values
+        df["Fare"] = pd.to_numeric(
+            df["Fare"], errors="coerce"
+        )
 
-        for _, row in invalid.iterrows():
+        # Identify invalid fares
+        invalid_rows = df[
+            df["Fare"].isna() | (df["Fare"] < 0)
+        ]
+
+        for _, row in invalid_rows.iterrows():
             print(
-                f"Warning: Row with PNR {row['PNR']} skipped - invalid fare."
+                f"Warning: Row with PNR {row['PNR']} "
+                f"skipped - invalid fare."
             )
 
-        df = df.dropna(subset=["Fare"]).copy()
+        # Remove invalid fare rows
+        df = df.drop(invalid_rows.index).copy()
 
-        print("\nValid records analysed:", len(df))
+        print(
+            f"\nValid records analysed: {len(df)}"
+        )
 
         return df
 
@@ -35,40 +72,52 @@ def load_data(filename):
         print(f"Error: File '{filename}' not found.")
         return None
 
+    except pd.errors.EmptyDataError:
+        print("Error: CSV file is empty.")
+        return None
+
     except Exception as e:
         print("Error:", e)
         return None
 
 
+# --------------------------------
 # 2. Bookings Per Train
+# --------------------------------
+
 def bookings_per_train(df):
 
-    print("\n========== BOOKINGS PER TRAIN ==========")
+    print("\n--- Bookings Per Train ---")
 
     bookings = df.groupby("Train").size()
 
     for train, count in bookings.items():
         print(f"{train} : {count}")
 
-    print("Total bookings:", len(df))
+    print(f"\nTotal bookings: {len(df)}")
 
+    # Bar Chart
     bookings.plot(kind="bar")
+
     plt.title("Bookings Per Train")
     plt.xlabel("Train")
     plt.ylabel("Number of Bookings")
     plt.xticks(rotation=0)
     plt.tight_layout()
-    plt.show(block=True)
+    plt.show()
 
 
+# --------------------------------
 # 3. Revenue Per Train
+# --------------------------------
+
 def revenue_per_train(df):
 
-    print("\n========== REVENUE PER TRAIN ==========")
+    print("\n--- Revenue Per Train ---")
 
+    # Only Confirmed tickets
     confirmed = df[
-        df["Status"].astype(str).str.strip().str.lower()
-        == "confirmed"
+        df["Status"].str.casefold() == "confirmed"
     ]
 
     revenue = confirmed.groupby("Train")["Fare"].sum()
@@ -76,33 +125,70 @@ def revenue_per_train(df):
     for train, amount in revenue.items():
         print(f"{train} : Rs. {amount:g}")
 
-    print(f"Total confirmed revenue: Rs. {revenue.sum():g}")
+    total_revenue = confirmed["Fare"].sum()
 
+    print(
+        f"\nTotal confirmed revenue: Rs. {total_revenue:g}"
+    )
+
+    # Bar Chart
     revenue.plot(kind="bar")
-    plt.title("Confirmed Revenue Per Train")
+
+    plt.title("Revenue Per Train")
     plt.xlabel("Train")
     plt.ylabel("Revenue (Rs.)")
     plt.xticks(rotation=0)
     plt.tight_layout()
-    plt.show(block=True)
+    plt.show()
 
 
-# 4. Ticket Status
-def ticket_status(df):
+# --------------------------------
+# 4. Ticket Status Count
+# --------------------------------
 
-    print("\n========== TICKET STATUS ==========")
+def ticket_status_count(df):
 
-    status = df["Status"].astype(str).str.strip().str.lower()
+    print("\n--- Ticket Status Count ---")
 
-    print("Confirmed :", (status == "confirmed").sum())
-    print("Waiting   :", (status == "waiting").sum())
-    print("Cancelled :", (status == "cancelled").sum())
+    status_count = (
+        df.groupby("Status")
+        .size()
+        .reindex(
+            ["Confirmed", "Waiting", "Cancelled"],
+            fill_value=0
+        )
+    )
+
+    for status, count in status_count.items():
+        print(f"{status} : {count}")
+
+    status_count.plot(kind="bar")
+
+    plt.title("Ticket Status Count")
+    plt.xlabel("Status")
+    plt.ylabel("Number of Tickets")
+    plt.xticks(rotation=0)
+    plt.tight_layout()
+    plt.show()
 
 
+# --------------------------------
 # 5. Main Menu
+# --------------------------------
+
 def main():
 
-    filename = input("Enter CSV filename: ").strip()
+    print("===================================")
+    print("   RAILWAY RESERVATION ANALYZER")
+    print("===================================")
+
+    filename = input(
+        "\nEnter CSV file name "
+        "(default: bookings.csv): "
+    ).strip()
+
+    if not filename:
+        filename = "bookings.csv"
 
     df = load_data(filename)
 
@@ -111,18 +197,13 @@ def main():
 
     while True:
 
-        print("\n====================================")
-        print("   RAILWAY RESERVATION ANALYZER")
-        print("====================================")
-
+        print("\n========== MAIN MENU ==========")
         print("1. Bookings per train")
         print("2. Revenue per train")
         print("3. Ticket status count")
         print("4. Exit")
 
-        choice = input("\nEnter your choice (1-4): ").strip()
-
-        print("Selected option:", repr(choice))
+        choice = input("\nEnter your choice (1-4): ")
 
         if choice == "1":
             bookings_per_train(df)
@@ -131,15 +212,20 @@ def main():
             revenue_per_train(df)
 
         elif choice == "3":
-            ticket_status(df)
+            ticket_status_count(df)
 
         elif choice == "4":
-            print("Exiting program...")
+            print("\nThank you for using Railway Reservation Analyzer!")
             break
 
         else:
-            print("Invalid choice. Please enter 1, 2, 3 or 4.")
+            print("Invalid choice! Please enter 1-4.")
 
+
+# --------------------------------
+# Program Execution
+# --------------------------------
 
 if __name__ == "__main__":
     main()
+
