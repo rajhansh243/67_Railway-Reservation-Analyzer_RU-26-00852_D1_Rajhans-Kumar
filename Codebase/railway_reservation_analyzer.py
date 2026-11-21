@@ -4,10 +4,6 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 
-# --------------------------------
-# 1. Read CSV File
-# --------------------------------
-
 def load_data(filename):
 
     file_path = Path(filename)
@@ -81,9 +77,7 @@ def load_data(filename):
         return None
 
 
-# --------------------------------
 # 2. Bookings Per Train
-# --------------------------------
 
 def bookings_per_train(df):
 
@@ -107,9 +101,7 @@ def bookings_per_train(df):
     plt.show()
 
 
-# --------------------------------
 # 3. Revenue Per Train
-# --------------------------------
 
 def revenue_per_train(df):
 
@@ -142,9 +134,7 @@ def revenue_per_train(df):
     plt.show()
 
 
-# --------------------------------
 # 4. Ticket Status Count
-# --------------------------------
 
 def ticket_status_count(df):
 
@@ -172,9 +162,9 @@ def ticket_status_count(df):
     plt.show()
 
 
-# --------------------------------
+
 # 5. Main Menu
-# --------------------------------
+
 
 def main():
 
@@ -222,9 +212,9 @@ def main():
             print("Invalid choice! Please enter 1-4.")
 
 
-# --------------------------------
+
 # Program Execution
-# --------------------------------
+
 
 if __name__ == "__main__":
     main()
